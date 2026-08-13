@@ -16,6 +16,7 @@
   --on-dark-dim:#c9beb2;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+html, body{max-width:100%; overflow-x:hidden;}
 body{
   background:var(--ink); color:var(--off);
   font-family:'Inter',sans-serif;
@@ -279,6 +280,7 @@ footer{background:var(--panel); border-top:3px solid var(--bordo); padding:56px 
   .footer-top{grid-template-columns:1fr;}
   .hero h1{font-size:34px;}
   .matchstrip .wrap{flex-direction:column; align-items:flex-start; gap:10px;}
+  .ms-line{white-space:normal; line-height:1.5;}
   .brand-text .t1{font-size:12.5px; white-space:normal; line-height:1.15;}
   .brand-text .t2{font-size:8.5px;}
   .brand img{height:32px;}
