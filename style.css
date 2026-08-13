@@ -151,7 +151,8 @@ button{font-family:inherit; cursor:pointer;}
 
 /* ===== STANDINGS TABLE ===== */
 .standings-wrap{display:grid; grid-template-columns:1.5fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line);}
-table.standings{width:100%; border-collapse:collapse; background:var(--panel-2);}
+.standings-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+table.standings{width:100%; min-width:480px; border-collapse:collapse; background:var(--panel-2);}
 table.standings th{text-align:left; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--gray-dim); padding:12px 14px; border-bottom:1px solid var(--line);}
 table.standings td{padding:11px 14px; font-size:14px; border-bottom:1px solid var(--line); color:var(--off);}
 table.standings tr.us{background:rgba(120,31,8,0.18);}
