@@ -43,9 +43,9 @@
 </nav>
 
 <div class="matchstrip">
-  <div class="wrap">
+  <div class="wrap" id="matchstrip-content">
     <div class="ms-label"><span class="dot"></span> Próximo jogo</div>
-    <div class="ms-line"><strong>SC Feira 1823</strong> x [Time Adversário] <span class="ms-sep">·</span> <strong>[Dia, DD/MM]</strong>, [HHhMM] <span class="ms-sep">·</span> [Local]</div>
+    <div class="ms-line">Carregando...</div>
   </div>
 </div>
 
@@ -123,6 +123,9 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="site-data.js"></script>
 <script>
 const navToggle = document.getElementById('navToggle');
 const mobileMenu = document.getElementById('mobileMenu');
@@ -133,12 +136,6 @@ if(navToggle && mobileMenu){
     navToggle.setAttribute('aria-expanded', expanded);
   });
 }
-document.querySelectorAll('.squad-tab').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.squad-tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-  });
-});
 </script>
 
 </body>

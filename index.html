@@ -43,9 +43,9 @@
 </nav>
 
 <div class="matchstrip">
-  <div class="wrap">
+  <div class="wrap" id="matchstrip-content">
     <div class="ms-label"><span class="dot"></span> Próximo jogo</div>
-    <div class="ms-line"><strong>SC Feira 1823</strong> x [Time Adversário] <span class="ms-sep">·</span> <strong>[Dia, DD/MM]</strong>, [HHhMM] <span class="ms-sep">·</span> [Local]</div>
+    <div class="ms-line">Carregando...</div>
   </div>
 </div>
 
@@ -67,18 +67,16 @@
 <section class="sec tight">
   <div class="wrap">
     <div class="home-quicklinks">
-      <a href="resultados.html" class="quicklink-card">
+      <a href="resultados.html" class="quicklink-card" id="ql-match">
         <span class="ql-label">Próximo jogo</span>
-        <span class="ql-main">SC Feira 1823 <em>x</em> [Time Adversário]</span>
-        <span class="ql-sub">[Dia, DD/MM] · [HHhMM] · [Local]</span>
+        <span class="ql-main">Carregando...</span>
       </a>
-      <a href="noticias.html" class="quicklink-card">
-        <span class="ql-label">[Categoria]</span>
-        <span class="ql-main">[Título da notícia]</span>
-        <span class="ql-sub">Ler notícia →</span>
+      <a href="noticias.html" class="quicklink-card" id="ql-news">
+        <span class="ql-label">Notícias</span>
+        <span class="ql-main">Carregando...</span>
       </a>
       <a href="elenco.html" class="quicklink-card">
-        <span class="ql-label">Elenco [AAAA]</span>
+        <span class="ql-label">Elenco</span>
         <span class="ql-main">Conheça o time principal e a comissão técnica</span>
         <span class="ql-sub">Ver elenco →</span>
       </a>
@@ -128,6 +126,9 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="site-data.js"></script>
 <script>
 const navToggle = document.getElementById('navToggle');
 const mobileMenu = document.getElementById('mobileMenu');
@@ -138,12 +139,6 @@ if(navToggle && mobileMenu){
     navToggle.setAttribute('aria-expanded', expanded);
   });
 }
-document.querySelectorAll('.squad-tab').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.squad-tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-  });
-});
 </script>
 
 </body>

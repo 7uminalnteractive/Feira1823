@@ -136,7 +136,7 @@ button{font-family:inherit; cursor:pointer;}
 .tag-ft{position:absolute; top:16px; right:16px; background:var(--panel); border:1px solid var(--line); color:var(--gray); font-size:11px; font-weight:700; letter-spacing:0.08em; padding:4px 9px;}
 
 /* ===== STANDINGS TABLE ===== */
-.standings-wrap{display:grid; grid-template-columns:1.5fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line);}
+.standings-wrap{display:block; border:1px solid var(--line);}
 .standings-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
 table.standings{width:100%; min-width:480px; border-collapse:collapse; background:var(--panel-2);}
 table.standings th{text-align:left; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.06em; text-transform:uppercase; color:var(--gray-dim); padding:14px 16px; border-bottom:1px solid var(--line);}
@@ -265,7 +265,6 @@ footer{background:var(--panel); border-top:3px solid var(--bordo); padding:56px 
   .navmenu{display:none;}
   .nav-toggle{display:block;}
   .matches-row{grid-template-columns:1fr;}
-  .standings-wrap{grid-template-columns:1fr;}
   .news-layout{grid-template-columns:1fr;}
   .news-grid-full{grid-template-columns:1fr;}
   .squad-grid{grid-template-columns:repeat(3,1fr);}
