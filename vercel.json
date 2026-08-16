@@ -28,11 +28,5 @@
         { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    }
   ]
 }
