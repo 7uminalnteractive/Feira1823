@@ -201,6 +201,7 @@ table.admin-table tr:hover{background:rgba(255,255,255,0.015);}
 <script src="supabase-client.js"></script>
 <script>
 const sb = getSupabaseClient();
+console.log('Supabase client iniciado. URL:', SUPABASE_URL, '| Chave (início):', SUPABASE_ANON_KEY.slice(0,20) + '...');
 let currentSession = null;
 let editingTable = null;
 let editingId = null;
@@ -248,8 +249,9 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   btn.disabled = false;
   btn.textContent = 'Entrar';
   if(res.error){
-    errBox.textContent = 'E-mail ou senha incorretos.';
+    errBox.textContent = 'Erro: ' + res.error.message + (res.error.status ? ' (código ' + res.error.status + ')' : '');
     errBox.classList.add('show');
+    console.error('Erro de login Supabase:', res.error);
     return;
   }
   currentSession = res.data.session;
