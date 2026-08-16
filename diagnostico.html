@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico — SC Feira 1823</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:monospace; background:#111; color:#eee; padding:20px; font-size:14px; line-height:1.6;}
+h1{font-size:18px; color:#fff;}
+.step{margin:16px 0; padding:14px; border-left:4px solid #666; background:#1a1a1a;}
+.step.ok{border-color:#2e8b4f;}
+.step.fail{border-color:#c0392b;}
+.step.pending{border-color:#c9a54d;}
+.label{font-weight:bold; color:#c9a54d;}
+pre{white-space:pre-wrap; word-break:break-all; background:#000; padding:10px; margin-top:8px; color:#0f0; font-size:12px;}
+button{background:#781f08; color:#fff; border:none; padding:14px 22px; font-size:15px; margin-top:20px; width:100%;}
+</style>
+</head>
+<body>
+<h1>Diagnóstico de conexão — SC Feira 1823</h1>
+<div id="results"></div>
+<button onclick="runDiagnostics()">Rodar diagnóstico</button>
+
+<script src="supabase-client.js"></script>
+<script>
+function addStep(id, label){
+  const div = document.createElement('div');
+  div.className = 'step pending';
+  div.id = id;
+  div.innerHTML = '<span class="label">' + label + '</span><div class="detail">Testando...</div>';
+  document.getElementById('results').appendChild(div);
+  return div;
+}
+function setResult(div, ok, detail){
+  div.className = 'step ' + (ok ? 'ok' : 'fail');
+  div.querySelector('.detail').innerHTML = (ok ? '✅ OK' : '❌ FALHOU') + '<pre>' + detail + '</pre>';
+}
+
+async function runDiagnostics(){
+  document.getElementById('results').innerHTML = '';
+
+  // 1. Biblioteca supabase-js carregou?
+  const s1 = addStep('s1', '1. Biblioteca supabase-js (via CDN)');
+  if(typeof supabase === 'undefined'){
+    setResult(s1, false, 'window.supabase não existe. O script do CDN não carregou. Verifique conexão de internet ou bloqueio de rede.');
+    return;
+  }
+  setResult(s1, true, 'Carregada com sucesso.');
+
+  // 2. Cliente Supabase inicializa?
+  const s2 = addStep('s2', '2. Criar cliente com URL e chave');
+  let sb;
+  try{
+    sb = getSupabaseClient();
+    setResult(s2, true, 'URL: ' + SUPABASE_URL + '\\nChave (início): ' + SUPABASE_ANON_KEY.slice(0,25) + '...');
+  } catch(e){
+    setResult(s2, false, 'Erro ao criar cliente: ' + e.message);
+    return;
+  }
+
+  // 3. Testar leitura pública (sem login) — deve funcionar mesmo deslogado
+  const s3 = addStep('s3', '3. Ler dados públicos (tabela players)');
+  try{
+    const res = await sb.from('players').select('*').limit(1);
+    if(res.error){
+      setResult(s3, false, 'Código: ' + (res.error.code||'?') + '\\nMensagem: ' + res.error.message + '\\nDetalhes: ' + JSON.stringify(res.error));
+    } else {
+      setResult(s3, true, 'Retornou ' + res.data.length + ' registro(s). Conexão com banco funciona.');
+    }
+  } catch(e){
+    setResult(s3, false, 'Exceção JS: ' + e.message);
+  }
+
+  // 4. Testar login real
+  const s4 = addStep('s4', '4. Tentar login (contatoscfeira1823@outlook.com.br)');
+  try{
+    const res = await sb.auth.signInWithPassword({
+      email: 'contatoscfeira1823@outlook.com.br',
+      password: '1823FEIRASC'
+    });
+    if(res.error){
+      setResult(s4, false, 'Código: ' + (res.error.status||res.error.code||'?') + '\\nMensagem: ' + res.error.message + '\\nDetalhes completos: ' + JSON.stringify(res.error, null, 2));
+    } else {
+      setResult(s4, true, 'Login funcionou! Usuário: ' + res.data.user.email);
+    }
+  } catch(e){
+    setResult(s4, false, 'Exceção JS (provável erro de rede/CORS): ' + e.message + '\\n' + (e.stack||''));
+  }
+}
+</script>
+</body>
+</html>
