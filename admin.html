@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="admin.css">
 </head>
 <body>
@@ -79,6 +80,11 @@
         Notícias
         <span class="nav-count" id="countNews">–</span>
       </button>
+      <button class="nav-item" data-panel="panel-contracts">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
+        Contratos
+        <span class="nav-count" id="countContracts">–</span>
+      </button>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -107,22 +113,22 @@
 
       <div class="page-panel active" id="panel-overview">
         <div class="metric-grid">
-          <div class="metric-card">
+          <div class="metric-card" data-goto="panel-players" role="button" tabindex="0">
             <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg></div>
             <div class="metric-value" id="mPlayers">–</div>
             <div class="metric-label">Jogadores no elenco</div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" data-goto="panel-matches" role="button" tabindex="0">
             <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
             <div class="metric-value" id="mMatches">–</div>
             <div class="metric-label">Jogos cadastrados</div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" data-goto="panel-standings" role="button" tabindex="0">
             <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
             <div class="metric-value" id="mPosition">–</div>
             <div class="metric-label">Posição na tabela</div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" data-goto="panel-news" role="button" tabindex="0">
             <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
             <div class="metric-value" id="mNews">–</div>
             <div class="metric-label">Notícias publicadas</div>
@@ -261,6 +267,28 @@
           <table class="data-table">
             <thead><tr><th>Categoria</th><th>Título</th><th>Data</th><th style="width:100px;"></th></tr></thead>
             <tbody id="newsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page-panel" id="panel-contracts">
+        <div class="panel-toolbar">
+          <div class="panel-toolbar-left">
+            <div class="panel-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="text" data-search-for="contracts" placeholder="Buscar contrato...">
+            </div>
+            <button class="filter-chip active" data-filter-group="contracts" data-filter="ALL">Todos</button>
+            <button class="filter-chip" data-filter-group="contracts" data-filter="rascunho">Rascunho</button>
+            <button class="filter-chip" data-filter-group="contracts" data-filter="pendente">Pendente</button>
+            <button class="filter-chip" data-filter-group="contracts" data-filter="assinado">Assinado</button>
+          </div>
+          <button class="btn-primary" data-action="new-contract" style="width:auto;">+ Novo contrato</button>
+        </div>
+        <div class="data-card">
+          <table class="data-table">
+            <thead><tr><th>Tipo</th><th>Contraparte</th><th>Título</th><th>Status</th><th style="width:140px;"></th></tr></thead>
+            <tbody id="contractsBody"></tbody>
           </table>
         </div>
       </div>
@@ -421,7 +449,7 @@ function switchToPanel(panelId){
 }
 
 async function loadEverything(){
-  await Promise.all([loadPlayers(), loadStaff(), loadMatches(), loadStandings(), loadNews()]);
+  await Promise.all([loadPlayers(), loadStaff(), loadMatches(), loadStandings(), loadNews(), loadContracts()]);
   renderOverview();
   loadActivity();
 }
@@ -580,6 +608,50 @@ function renderNews(){
   }).join('');
 }
 
+async function loadContracts(){
+  const res = await sb.from('contracts').select('*').order('sort_order');
+  DATA_CACHE.contracts = res.error ? [] : res.data;
+  document.getElementById('countContracts').textContent = DATA_CACHE.contracts.length;
+  renderContracts();
+}
+function renderContracts(){
+  const body = document.getElementById('contractsBody');
+  const searchInput = document.querySelector('[data-search-for="contracts"]');
+  const q = (searchInput && searchInput.value || '').toLowerCase();
+  const activeFilterBtn = document.querySelector('.filter-chip[data-filter-group="contracts"].active');
+  const filter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'ALL';
+
+  let rows = DATA_CACHE.contracts.slice();
+  if(filter !== 'ALL') rows = rows.filter(function(c){ return c.status === filter; });
+  if(q) rows = rows.filter(function(c){ return c.counterparty_name.toLowerCase().indexOf(q) !== -1 || c.title.toLowerCase().indexOf(q) !== -1; });
+
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="5">' + emptyState('Nenhum contrato encontrado', 'Cadastre patrocínios, parcerias ou contratos de atletas.') + '</td></tr>';
+    return;
+  }
+  const typeLabel = { atleta:'Atleta', patrocinio:'Patrocínio', parceria:'Parceria', comissao_tecnica:'Comissão Técnica' };
+  const statusChip = {
+    rascunho:'<span class="chip chip-gray">Rascunho</span>',
+    pendente:'<span class="chip chip-blue">Pendente</span>',
+    assinado:'<span class="chip chip-green">Assinado</span>',
+    encerrado:'<span class="chip chip-gray">Encerrado</span>',
+    cancelado:'<span class="chip chip-red">Cancelado</span>'
+  };
+  body.innerHTML = rows.map(function(c){
+    const canSign = c.status === 'rascunho' || c.status === 'pendente';
+    const signBtn = canSign
+      ? '<button class="icon-btn" data-sign="' + c.id + '" title="Assinar e gerar PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>'
+      : '<button class="icon-btn" data-pdf="' + c.id + '" title="Baixar PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg></button>';
+    return '<tr>' +
+      '<td class="cell-muted">' + (typeLabel[c.contract_type] || c.contract_type) + '</td>' +
+      '<td class="cell-primary">' + escapeHtml(c.counterparty_name) + '</td>' +
+      '<td class="cell-muted">' + escapeHtml(c.title) + '</td>' +
+      '<td>' + (statusChip[c.status] || c.status) + '</td>' +
+      '<td><div class="row-actions">' + signBtn + iconBtn('edit','contracts',c.id) + iconBtn('delete','contracts',c.id) + '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
 function emptyState(title, sub){
   return '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>' +
     '<div class="empty-state-title">' + title + '</div><div class="empty-state-sub">' + sub + '</div></div>';
@@ -731,6 +803,22 @@ const TABLE_CONFIG = {
       { name:'sort_order', label:'Ordem de exibição', type:'number', default:0 }
     ],
     reload: null
+  },
+  contracts: {
+    title: 'Contrato',
+    fields: [
+      { name:'contract_type', label:'Tipo', type:'select', options:['atleta','patrocinio','parceria','comissao_tecnica'], optionLabels:['Atleta','Patrocínio','Parceria','Comissão Técnica'], required:true },
+      { name:'counterparty_name', label:'Nome da contraparte', type:'text', required:true },
+      { name:'counterparty_document', label:'CPF/CNPJ', type:'text' },
+      { name:'title', label:'Título do contrato', type:'text', required:true },
+      { name:'description', label:'Descrição / cláusulas principais', type:'textarea' },
+      { name:'value_cents', label:'Valor (R$)', type:'number' },
+      { name:'start_date', label:'Início da vigência', type:'date' },
+      { name:'end_date', label:'Fim da vigência', type:'date' },
+      { name:'status', label:'Status', type:'select', options:['rascunho','pendente','assinado','encerrado','cancelado'], optionLabels:['Rascunho','Pendente','Assinado','Encerrado','Cancelado'], required:true },
+      { name:'sort_order', label:'Ordem de exibição', type:'number', default:0 }
+    ],
+    reload: null
   }
 };
 TABLE_CONFIG.players.reload = loadPlayers;
@@ -738,6 +826,7 @@ TABLE_CONFIG.staff.reload = loadStaff;
 TABLE_CONFIG.matches.reload = loadMatches;
 TABLE_CONFIG.standings.reload = loadStandings;
 TABLE_CONFIG.news.reload = loadNews;
+TABLE_CONFIG.contracts.reload = loadContracts;
 
 const modalOverlay = document.getElementById('modalOverlay');
 const modalForm = document.getElementById('modalForm');
@@ -746,6 +835,7 @@ const modalTitle = document.getElementById('modalTitle');
 function openModal(table, record){
   editingTable = table;
   editingId = record ? record.id : null;
+  delete modalForm.dataset.signMode;
   const config = TABLE_CONFIG[table];
   modalTitle.textContent = (record ? 'Editar ' : 'Novo — ') + config.title;
 
@@ -777,6 +867,7 @@ function closeModal(){
   modalOverlay.classList.remove('show');
   editingTable = null;
   editingId = null;
+  delete modalForm.dataset.signMode;
 }
 document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
 document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
@@ -784,6 +875,31 @@ modalOverlay.addEventListener('click', function(e){ if(e.target === modalOverlay
 
 modalForm.addEventListener('submit', async function(e){
   e.preventDefault();
+
+  if(modalForm.dataset.signMode === 'true'){
+    const signedByName = new FormData(modalForm).get('signed_by_name');
+    const saveBtn = document.getElementById('modalSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span> Assinando...';
+    const payload = { signed_by_name: signedByName, status: 'assinado', signed_at: new Date().toISOString() };
+    const res = await sb.from('contracts').update(payload).eq('id', editingId);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Salvar';
+    if(res.error){
+      showToast('Erro ao assinar: ' + res.error.message, true);
+      return;
+    }
+    delete modalForm.dataset.signMode;
+    showToast('Contrato assinado com sucesso.');
+    closeModal();
+    await loadContracts();
+    renderOverview();
+    loadActivity();
+    const signedContract = DATA_CACHE.contracts.find(function(c){ return String(c.id) === String(editingId); });
+    if(signedContract) generateContractPdf(signedContract);
+    return;
+  }
+
   const config = TABLE_CONFIG[editingTable];
   const formData = new FormData(modalForm);
   const payload = {};
@@ -826,9 +942,14 @@ modalForm.addEventListener('submit', async function(e){
 });
 
 document.addEventListener('click', async function(e){
+  const metricCard = e.target.closest('[data-goto]');
+  if(metricCard){
+    switchToPanel(metricCard.dataset.goto);
+    return;
+  }
   const qa = e.target.closest('[data-action]');
   if(qa){
-    const map = { 'new-player':'players', 'new-staff':'staff', 'new-match':'matches', 'new-standing':'standings', 'new-news':'news' };
+    const map = { 'new-player':'players', 'new-staff':'staff', 'new-match':'matches', 'new-standing':'standings', 'new-news':'news', 'new-contract':'contracts' };
     if(map[qa.dataset.action]){
       switchToPanel('panel-' + map[qa.dataset.action]);
       openModal(map[qa.dataset.action]);
@@ -859,7 +980,97 @@ document.addEventListener('click', async function(e){
     loadActivity();
     return;
   }
+  const signBtn = e.target.closest('[data-sign]');
+  if(signBtn){
+    const contract = DATA_CACHE.contracts.find(function(c){ return String(c.id) === String(signBtn.dataset.sign); });
+    if(contract) openSignModal(contract);
+    return;
+  }
+  const pdfBtn = e.target.closest('[data-pdf]');
+  if(pdfBtn){
+    const contract = DATA_CACHE.contracts.find(function(c){ return String(c.id) === String(pdfBtn.dataset.pdf); });
+    if(contract) generateContractPdf(contract);
+    return;
+  }
 });
+
+document.querySelectorAll('[data-goto]').forEach(function(card){
+  card.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      switchToPanel(card.dataset.goto);
+    }
+  });
+});
+
+function openSignModal(contract){
+  editingTable = 'contracts';
+  editingId = contract.id;
+  modalTitle.textContent = 'Assinar contrato — ' + contract.title;
+  modalForm.innerHTML =
+    '<div class="field"><label>Assinado por (nome completo)</label><input type="text" name="signed_by_name" required placeholder="Nome de quem está assinando"></div>' +
+    '<p style="font-size:12.5px; color:var(--gray-dim); line-height:1.6;">Ao confirmar, o contrato será marcado como <b style="color:var(--off);">assinado</b> com a data de hoje, e um PDF será gerado automaticamente para download.</p>';
+  modalForm.dataset.signMode = 'true';
+  modalOverlay.classList.add('show');
+}
+
+function generateContractPdf(contract){
+  const doc = new jspdf.jsPDF();
+  const typeLabel = { atleta:'Contrato de Atleta', patrocinio:'Contrato de Patrocínio', parceria:'Contrato de Parceria', comissao_tecnica:'Contrato — Comissão Técnica' };
+  const valueStr = contract.value_cents ? 'R$ ' + (contract.value_cents/100).toLocaleString('pt-BR', {minimumFractionDigits:2}) : 'Não informado';
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('SPORT CLUB FEIRA 1823 SAF', 20, 22);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(typeLabel[contract.contract_type] || 'Contrato', 20, 30);
+
+  doc.setDrawColor(120, 31, 8);
+  doc.setLineWidth(0.5);
+  doc.line(20, 34, 190, 34);
+
+  let y = 46;
+  function field(label, value){
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(label, 20, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(value || 'Não informado'), 20, y+6);
+    y += 16;
+  }
+  field('Título', contract.title);
+  field('Contraparte', contract.counterparty_name);
+  field('CPF/CNPJ', contract.counterparty_document);
+  field('Valor', valueStr);
+  field('Vigência', (contract.start_date || '—') + ' até ' + (contract.end_date || '—'));
+
+  if(contract.description){
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Descrição / cláusulas', 20, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(contract.description, 170);
+    doc.text(lines, 20, y);
+    y += lines.length * 5 + 10;
+  }
+
+  y += 20;
+  doc.setDrawColor(150,150,150);
+  doc.line(20, y, 100, y);
+  doc.setFontSize(9);
+  doc.text(contract.signed_by_name || 'Assinatura', 20, y+5);
+  doc.text('SC Feira 1823 SAF', 130, y+5);
+
+  doc.setFontSize(8);
+  doc.setTextColor(140,140,140);
+  const signedInfo = contract.signed_at ? ('Assinado em ' + new Date(contract.signed_at).toLocaleDateString('pt-BR')) : 'Documento gerado, aguardando assinatura';
+  doc.text(signedInfo, 20, 285);
+
+  const fileName = 'contrato-' + contract.counterparty_name.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
+  doc.save(fileName);
+}
 
 checkSession();
 </script>

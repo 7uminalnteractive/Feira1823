@@ -153,7 +153,7 @@
       return;
     }
     el.innerHTML = res.data.map(function(p){
-      return '<div class="squad-card" data-position="' + escapeHtml(p.position) + '">' +
+      return '<a class="squad-card squad-card-link" data-position="' + escapeHtml(p.position) + '" href="jogador.html?id=' + encodeURIComponent(p.id) + '">' +
         '<div class="squad-photo">' +
           '<span class="squad-num-big us-color">' + escapeHtml(p.number) + '</span>' +
           PLAYER_SILHOUETTE +
@@ -163,7 +163,7 @@
           '<div class="name">' + escapeHtml(p.name) + '</div>' +
           '<div class="num-tag">Nº ' + escapeHtml(p.number) + '</div>' +
         '</div>' +
-      '</div>';
+      '</a>';
     }).join('');
     setupSquadTabs();
   }
@@ -203,7 +203,7 @@
       return;
     }
     el.innerHTML = res.data.map(function(s){
-      return '<div class="staff-card"><div class="role">' + escapeHtml(s.role) + '</div><div class="name">' + escapeHtml(s.name) + '</div></div>';
+      return '<a class="staff-card" style="display:block;" href="tecnico.html?id=' + encodeURIComponent(s.id) + '"><div class="role">' + escapeHtml(s.role) + '</div><div class="name">' + escapeHtml(s.name) + '</div></a>';
     }).join('');
   }
 
@@ -285,6 +285,105 @@
       '<span class="ql-sub">Ler notícia →</span>';
   }
 
+  // ---------------- Página de perfil individual (jogador.html / tecnico.html) ----------------
+  function getQueryParam(name){
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
+  const POSITION_LABELS = { GOL:'Goleiro', FIXO:'Fixo', ALA:'Ala', MEIA:'Meia', PIVO:'Pivô' };
+
+  async function renderPlayerProfile(){
+    const el = document.getElementById('profileContent');
+    if(!el || !window.location.pathname.includes('jogador.html')) return;
+    const id = getQueryParam('id');
+    if(!id){
+      el.innerHTML = notFoundHtml('Jogador não encontrado', 'Nenhum jogador foi especificado.');
+      return;
+    }
+    const res = await sb.from('players').select('*').eq('id', id).single();
+    if(res.error || !res.data){
+      el.innerHTML = notFoundHtml('Jogador não encontrado', 'O jogador que você procura não existe ou foi removido.');
+      return;
+    }
+    const p = res.data;
+    document.title = p.name + ' — Sport Club Feira 1823 SAF';
+    const photoInner = p.photo_url
+      ? '<img src="' + escapeHtml(p.photo_url) + '" alt="' + escapeHtml(p.name) + '">'
+      : '<span class="profile-num">' + escapeHtml(p.number) + '</span>' + PLAYER_SILHOUETTE;
+
+    const metaItems = [];
+    metaItems.push(metaItem('Número', '#' + escapeHtml(p.number)));
+    metaItems.push(metaItem('Posição', POSITION_LABELS[p.position] || escapeHtml(p.position)));
+    if(p.nationality) metaItems.push(metaItem('Nacionalidade', escapeHtml(p.nationality)));
+    if(p.height_cm) metaItems.push(metaItem('Altura', p.height_cm + ' cm'));
+    if(p.joined_at) metaItems.push(metaItem('No clube desde', formatDate(p.joined_at)));
+
+    el.innerHTML =
+      '<header class="profile-hero"><div class="wrap">' +
+        '<div class="profile-photo">' + photoInner + '</div>' +
+        '<div class="profile-info">' +
+          '<span class="pos-chip">' + (POSITION_LABELS[p.position] || escapeHtml(p.position)) + '</span>' +
+          '<h1>' + escapeHtml(p.name) + '</h1>' +
+          '<div class="role-line">Sport Club Feira 1823 · Elenco principal</div>' +
+          '<div class="profile-meta-row">' + metaItems.join('') + '</div>' +
+        '</div>' +
+      '</div></header>' +
+      '<section class="profile-body"><div class="wrap">' +
+        (p.bio
+          ? '<p class="profile-bio">' + escapeHtml(p.bio) + '</p>'
+          : '<p class="profile-bio empty">Biografia ainda não cadastrada.</p>') +
+      '</div></section>';
+  }
+
+  async function renderStaffProfile(){
+    const el = document.getElementById('profileContent');
+    if(!el || !window.location.pathname.includes('tecnico.html')) return;
+    const id = getQueryParam('id');
+    if(!id){
+      el.innerHTML = notFoundHtml('Membro não encontrado', 'Nenhum membro da comissão foi especificado.');
+      return;
+    }
+    const res = await sb.from('staff').select('*').eq('id', id).single();
+    if(res.error || !res.data){
+      el.innerHTML = notFoundHtml('Membro não encontrado', 'Este integrante da comissão técnica não existe ou foi removido.');
+      return;
+    }
+    const s = res.data;
+    document.title = s.name + ' — Sport Club Feira 1823 SAF';
+    const photoInner = s.photo_url
+      ? '<img src="' + escapeHtml(s.photo_url) + '" alt="' + escapeHtml(s.name) + '">'
+      : PLAYER_SILHOUETTE;
+
+    const metaItems = [];
+    metaItems.push(metaItem('Cargo', escapeHtml(s.role)));
+    if(s.joined_at) metaItems.push(metaItem('No clube desde', formatDate(s.joined_at)));
+
+    el.innerHTML =
+      '<header class="profile-hero"><div class="wrap">' +
+        '<div class="profile-photo">' + photoInner + '</div>' +
+        '<div class="profile-info">' +
+          '<span class="pos-chip">' + escapeHtml(s.role) + '</span>' +
+          '<h1>' + escapeHtml(s.name) + '</h1>' +
+          '<div class="role-line">Sport Club Feira 1823 · Comissão Técnica</div>' +
+          '<div class="profile-meta-row">' + metaItems.join('') + '</div>' +
+        '</div>' +
+      '</div></header>' +
+      '<section class="profile-body"><div class="wrap">' +
+        (s.bio
+          ? '<p class="profile-bio">' + escapeHtml(s.bio) + '</p>'
+          : '<p class="profile-bio empty">Biografia ainda não cadastrada.</p>') +
+      '</div></section>';
+  }
+
+  function metaItem(label, value){
+    return '<div class="profile-meta-item"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
+  }
+
+  function notFoundHtml(title, sub){
+    return '<div class="profile-notfound"><h2>' + title + '</h2><p>' + sub + '</p></div>';
+  }
+
   // ---------------- Bootstrap: roda o que existir na página atual ----------------
   document.addEventListener('DOMContentLoaded', function(){
     renderMatchstrip();
@@ -296,5 +395,7 @@
     renderNewsFull();
     renderHomeQuicklinkMatch();
     renderHomeQuicklinkNews();
+    renderPlayerProfile();
+    renderStaffProfile();
   });
 })();

@@ -155,8 +155,10 @@ h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif; font-weight:700;}
 .metric-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;}
 .metric-card{
   background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px;
-  position:relative; overflow:hidden;
+  position:relative; overflow:hidden; cursor:pointer; transition:border-color .15s, transform .15s;
 }
+.metric-card:hover{border-color:var(--bordo-light); transform:translateY(-2px);}
+.metric-card:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
 .metric-card::before{
   content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--bordo), transparent);
 }
