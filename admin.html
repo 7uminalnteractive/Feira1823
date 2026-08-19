@@ -748,6 +748,8 @@ const TABLE_CONFIG = {
       { name:'number', label:'Número', type:'text', required:true },
       { name:'name', label:'Nome', type:'text', required:true },
       { name:'position', label:'Posição', type:'select', options:['GOL','FIXO','ALA','MEIA','PIVO'], required:true },
+      { name:'phone', label:'Telefone', type:'text' },
+      { name:'birth_date', label:'Data de nascimento', type:'date' },
       { name:'sort_order', label:'Ordem de exibição', type:'number', default:0 }
     ],
     reload: null
@@ -808,8 +810,11 @@ const TABLE_CONFIG = {
     title: 'Contrato',
     fields: [
       { name:'contract_type', label:'Tipo', type:'select', options:['atleta','patrocinio','parceria','comissao_tecnica'], optionLabels:['Atleta','Patrocínio','Parceria','Comissão Técnica'], required:true },
-      { name:'counterparty_name', label:'Nome da contraparte', type:'text', required:true },
+      { name:'counterparty_name', label:'Nome da contraparte (ou do atleta)', type:'text', required:true },
       { name:'counterparty_document', label:'CPF/CNPJ', type:'text' },
+      { name:'athlete_birth_date', label:'Data de nascimento do atleta', type:'date' },
+      { name:'athlete_phone', label:'Telefone do atleta', type:'text' },
+      { name:'athlete_position', label:'Posição do atleta', type:'text' },
       { name:'title', label:'Título do contrato', type:'text', required:true },
       { name:'description', label:'Descrição / cláusulas principais', type:'textarea' },
       { name:'value_cents', label:'Valor (R$)', type:'number' },
@@ -1015,8 +1020,12 @@ function openSignModal(contract){
 }
 
 function generateContractPdf(contract){
+  if(contract.contract_type === 'atleta'){
+    generateAthleteTermPdf(contract);
+    return;
+  }
   const doc = new jspdf.jsPDF();
-  const typeLabel = { atleta:'Contrato de Atleta', patrocinio:'Contrato de Patrocínio', parceria:'Contrato de Parceria', comissao_tecnica:'Contrato — Comissão Técnica' };
+  const typeLabel = { patrocinio:'Contrato de Patrocínio', parceria:'Contrato de Parceria', comissao_tecnica:'Contrato — Comissão Técnica' };
   const valueStr = contract.value_cents ? 'R$ ' + (contract.value_cents/100).toLocaleString('pt-BR', {minimumFractionDigits:2}) : 'Não informado';
 
   doc.setFont('helvetica', 'bold');
@@ -1069,6 +1078,165 @@ function generateContractPdf(contract){
   doc.text(signedInfo, 20, 285);
 
   const fileName = 'contrato-' + contract.counterparty_name.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
+  doc.save(fileName);
+}
+
+// ---------- Termo de Vínculo Esportivo (modelo oficial para atletas) ----------
+const CLUB_PRESIDENT_NAME = 'Kauan Mariano';
+
+function fmtDateBR(dateStr){
+  if(!dateStr) return 'Não informado';
+  const d = new Date(dateStr + 'T00:00:00');
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+}
+
+function fmtDateLongBR(dateStr){
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+}
+
+function generateAthleteTermPdf(contract){
+  const doc = new jspdf.jsPDF();
+  const marginL = 20, marginR = 190, pageBottom = 280;
+  let y = 20;
+
+  function ensureSpace(next){
+    if(y + next > pageBottom){ doc.addPage(); y = 20; }
+  }
+  function heading(text){
+    ensureSpace(14);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.text(text, marginL, y);
+    y += 8;
+  }
+  function paragraph(text){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, marginR - marginL);
+    lines.forEach(function(line){
+      ensureSpace(6);
+      doc.text(line, marginL, y);
+      y += 5.5;
+    });
+    y += 4;
+  }
+  function bullet(text){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, marginR - marginL - 6);
+    lines.forEach(function(line, i){
+      ensureSpace(6);
+      doc.text((i===0 ? '•  ' : '   ') + line, marginL, y);
+      y += 5.5;
+    });
+  }
+  function fieldLine(label, value){
+    ensureSpace(7);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text(label + ':', marginL, y);
+    doc.setFont('helvetica','normal');
+    doc.text(String(value), marginL + doc.getTextWidth(label + ':  ') + 2, y);
+    y += 6.5;
+  }
+
+  // Cabeçalho
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(17);
+  doc.setTextColor(120,31,8);
+  doc.text('FEIRA 1823', marginL, y); y += 7;
+  doc.setFontSize(11);
+  doc.setTextColor(0,0,0);
+  doc.text('SPORT CLUB FEIRA DE SANTANA 1823 SAF', marginL, y); y += 9;
+  doc.setDrawColor(120,31,8);
+  doc.setLineWidth(0.6);
+  doc.line(marginL, y, marginR, y); y += 10;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.text('TERMO DE VÍNCULO ESPORTIVO E PARTICIPAÇÃO EM EQUIPE', marginL, y, {maxWidth: marginR-marginL}); y += 14;
+
+  heading('1. IDENTIFICAÇÃO DAS PARTES');
+  fieldLine('CLUBE', 'Sport Club Feira de Santana 1823 SAF — FEIRA 1823');
+  fieldLine('REPRESENTANTE', CLUB_PRESIDENT_NAME + ' — Presidente');
+  fieldLine('ATLETA', contract.counterparty_name || 'Não informado');
+  fieldLine('DATA DE NASCIMENTO', contract.athlete_birth_date ? fmtDateBR(contract.athlete_birth_date) : 'Não informado');
+  fieldLine('TELEFONE', contract.athlete_phone || 'Não informado');
+  fieldLine('POSIÇÃO', contract.athlete_position || 'Não informado');
+  y += 3;
+
+  heading('2. DO OBJETO');
+  paragraph('O presente termo registra a entrada do ATLETA no quadro esportivo do FEIRA 1823 para participação em atividades de Futebol 7 realizadas pelo clube, incluindo treinamentos, amistosos, babas, seletivas, eventos e competições de caráter não profissional, conforme convocação da comissão técnica.');
+
+  heading('3. DA NATUREZA DO VÍNCULO');
+  paragraph('A participação prevista neste termo possui natureza exclusivamente esportiva e amadora. Neste momento, não haverá pagamento de salário, remuneração mensal, ajuda de custo fixa ou outra contraprestação regular pelo clube ao atleta.');
+  paragraph('Este documento não é contrato de trabalho esportivo profissional. Caso futuramente as partes estabeleçam remuneração ou outra condição que altere a natureza da relação, deverá ser celebrado instrumento próprio, observada a legislação aplicável.');
+
+  heading('4. DA VIGÊNCIA');
+  paragraph('O presente termo terá início em ' + fmtDateBR(contract.start_date) + ' e permanecerá válido enquanto o atleta integrar o projeto esportivo do FEIRA 1823, podendo qualquer das partes solicitar seu encerramento mediante comunicação ao clube.');
+
+  heading('5. DOS COMPROMISSOS DO ATLETA');
+  bullet('Comparecer aos treinos, jogos e demais atividades para as quais for convocado.');
+  bullet('Cumprir horários e orientações da comissão técnica.');
+  bullet('Respeitar atletas, comissão técnica, dirigentes, árbitros, adversários e demais envolvidos.');
+  bullet('Zelar pelos uniformes, equipamentos e materiais disponibilizados pelo clube.');
+  bullet('Comunicar eventual ausência ou impedimento sempre que possível.');
+  bullet('Manter conduta compatível com a imagem do FEIRA 1823.');
+  y += 4;
+
+  heading('6. DOS COMPROMISSOS DO CLUBE');
+  bullet('Informar horários e locais de treinos, jogos e atividades.');
+  bullet('Organizar a participação da equipe nas atividades e competições previstas.');
+  bullet('Fornecer, quando disponível, uniforme ou material esportivo necessário.');
+  bullet('Manter comunicação sobre convocações, alterações e informações relevantes.');
+  y += 4;
+
+  heading('7. DA PARTICIPAÇÃO EM OUTRAS EQUIPES');
+  paragraph('A participação do atleta em outras equipes, amistosos ou competições deverá respeitar as regras da competição e os compromissos assumidos com o FEIRA 1823. Este termo não estabelece, por si só, transferência profissional ou exclusividade remunerada.');
+
+  heading('8. DA IMAGEM E DIVULGAÇÃO');
+  paragraph('O atleta autoriza o FEIRA 1823 a utilizar fotografias, vídeos e registros realizados durante treinos, jogos, seletivas e eventos do clube para divulgação institucional, esportiva e em suas redes sociais, sem pagamento específico por essa utilização.');
+  paragraph('A exploração comercial individual da imagem do atleta em campanhas publicitárias específicas deverá ser objeto de autorização e instrumento próprio quando necessário.');
+
+  heading('9. DA SAÚDE E RESPONSABILIDADE');
+  paragraph('O atleta declara estar ciente de que a prática esportiva envolve riscos físicos e compromete-se a informar ao clube qualquer condição ou limitação relevante. O clube deverá adotar medidas de segurança e organização compatíveis com as atividades realizadas.');
+
+  heading('10. DA DISCIPLINA E DESLIGAMENTO');
+  paragraph('O descumprimento das regras da equipe, condutas antidesportivas ou atitudes que prejudiquem o grupo ou a imagem do clube poderão resultar em advertência, afastamento ou desligamento.');
+  paragraph('O atleta poderá solicitar seu desligamento a qualquer momento, sem cobrança de multa por este simples ato, ressalvadas obrigações assumidas em outros documentos.');
+
+  heading('11. DA PROTEÇÃO DE DADOS');
+  paragraph('Os dados pessoais fornecidos pelo atleta serão utilizados para cadastro, comunicação, organização das atividades, inscrição em competições e cumprimento de obrigações legais e administrativas, observada a legislação aplicável.');
+
+  heading('12. DISPOSIÇÕES FINAIS');
+  paragraph('As partes declaram que leram e compreenderam este termo e concordam com suas condições. O documento representa o vínculo esportivo amador do atleta com o FEIRA 1823 e não substitui eventual contrato profissional ou outro instrumento que venha a ser necessário no futuro.');
+
+  heading('13. ASSINATURAS');
+  ensureSpace(10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  const signDateStr = contract.signed_at ? fmtDateLongBR(contract.signed_at.slice(0,10)) : fmtDateLongBR(null);
+  doc.text('Feira de Santana – BA, ' + signDateStr + '.', marginL, y);
+  y += 22;
+
+  ensureSpace(30);
+  doc.setDrawColor(120,120,120);
+  doc.setLineWidth(0.3);
+  doc.line(marginL, y, marginL + 75, y);
+  doc.line(marginL + 90, y, marginL + 165, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold');
+  doc.text('ATLETA', marginL, y);
+  doc.text('REPRESENTANTE DO FEIRA 1823', marginL + 90, y);
+  y += 5;
+  doc.setFont('helvetica','normal');
+  doc.text('Nome: ' + (contract.signed_by_name || contract.counterparty_name || ''), marginL, y);
+  doc.text(CLUB_PRESIDENT_NAME + ' — Presidente', marginL + 90, y);
+
+  const fileName = 'termo-' + (contract.counterparty_name || 'atleta').toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
   doc.save(fileName);
 }
 
