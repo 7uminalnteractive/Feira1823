@@ -639,15 +639,16 @@ function renderContracts(){
   };
   body.innerHTML = rows.map(function(c){
     const canSign = c.status === 'rascunho' || c.status === 'pendente';
-    const signBtn = canSign
-      ? '<button class="icon-btn" data-sign="' + c.id + '" title="Assinar e gerar PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>'
+    const actionBtns = canSign
+      ? '<button class="icon-btn" data-copylink="' + c.id + '" title="Copiar link de assinatura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 00-7.07 0l-2.83 2.83a5 5 0 007.07 7.07l1.5-1.5"/></svg></button>' +
+        '<button class="icon-btn" data-sign="' + c.id + '" title="Assinar agora (presencial)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>'
       : '<button class="icon-btn" data-pdf="' + c.id + '" title="Baixar PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg></button>';
     return '<tr>' +
       '<td class="cell-muted">' + (typeLabel[c.contract_type] || c.contract_type) + '</td>' +
       '<td class="cell-primary">' + escapeHtml(c.counterparty_name) + '</td>' +
       '<td class="cell-muted">' + escapeHtml(c.title) + '</td>' +
       '<td>' + (statusChip[c.status] || c.status) + '</td>' +
-      '<td><div class="row-actions">' + signBtn + iconBtn('edit','contracts',c.id) + iconBtn('delete','contracts',c.id) + '</div></td>' +
+      '<td><div class="row-actions">' + actionBtns + iconBtn('edit','contracts',c.id) + iconBtn('delete','contracts',c.id) + '</div></td>' +
     '</tr>';
   }).join('');
 }
@@ -991,6 +992,12 @@ document.addEventListener('click', async function(e){
     if(contract) openSignModal(contract);
     return;
   }
+  const copyLinkBtn = e.target.closest('[data-copylink]');
+  if(copyLinkBtn){
+    const contract = DATA_CACHE.contracts.find(function(c){ return String(c.id) === String(copyLinkBtn.dataset.copylink); });
+    if(contract) copySigningLink(contract);
+    return;
+  }
   const pdfBtn = e.target.closest('[data-pdf]');
   if(pdfBtn){
     const contract = DATA_CACHE.contracts.find(function(c){ return String(c.id) === String(pdfBtn.dataset.pdf); });
@@ -1007,6 +1014,22 @@ document.querySelectorAll('[data-goto]').forEach(function(card){
     }
   });
 });
+
+function copySigningLink(contract){
+  const url = window.location.origin + '/assinar.html?id=' + contract.id + '&token=' + contract.sign_token;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){
+      showToast('Link de assinatura copiado.');
+    }).catch(function(){
+      promptFallback(url);
+    });
+  } else {
+    promptFallback(url);
+  }
+}
+function promptFallback(url){
+  window.prompt('Copie o link de assinatura abaixo:', url);
+}
 
 function openSignModal(contract){
   editingTable = 'contracts';
